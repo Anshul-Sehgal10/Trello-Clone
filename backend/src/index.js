@@ -279,7 +279,7 @@ app.post('/api/cards/:cardId/assignees', async (req, res) => {
     const { cardId } = req.params;
     const { memberId } = req.body;
     
-    await dbRun('INSERT OR IGNORE INTO card_assignees (cardId, memberId) VALUES (?, ?)',
+    await dbRun('INSERT INTO card_assignees ("cardId", "memberId") VALUES (?, ?) ON CONFLICT DO NOTHING',
       [cardId, memberId]);
     
     const assignees = await dbQuery(
@@ -341,7 +341,7 @@ app.post('/api/cards/:cardId/labels', async (req, res) => {
     const { cardId } = req.params;
     const { labelId } = req.body;
     
-    await dbRun('INSERT OR IGNORE INTO card_labels (cardId, labelId) VALUES (?, ?)',
+    await dbRun('INSERT INTO card_labels ("cardId", "labelId") VALUES (?, ?) ON CONFLICT DO NOTHING',
       [cardId, labelId]);
     
     const labels = await dbQuery(

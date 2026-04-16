@@ -15,8 +15,9 @@ import type { CollisionDetection } from "@dnd-kit/core";
 import { SortableContext, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { FormEvent, useEffect, useRef, useState } from "react";
 import { Layers, LayoutGrid, Plus, Settings2, X } from "lucide-react";
-import { BoardDetail } from "@/lib/types";
+import { BoardDetail, BoardList, Card } from "@/lib/types";
 import { ListColumn } from "@/components/list/ListColumn";
+import { CardItemVisual } from "@/components/card/CardItem";
 
 interface BoardCanvasProps {
   board: BoardDetail;
@@ -55,8 +56,8 @@ export function BoardCanvas({
   const [isStylePopoverOpen, setIsStylePopoverOpen] = useState(false);
   const [isAddListOpen, setIsAddListOpen] = useState(false);
   const [dragPreview, setDragPreview] = useState<
-    | { type: "list"; title: string; cardCount: number }
-    | { type: "card"; title: string; listTitle: string; labelCount: number }
+    | { type: "list"; list: BoardList }
+    | { type: "card"; card: Card }
     | null
   >(null);
   const stylePopoverRef = useRef<HTMLDivElement | null>(null);
@@ -149,24 +150,13 @@ export function BoardCanvas({
     const activeId = String(event.active.id);
 
     if (activeType === "list") {
-      // Show a list DragOverlay that exactly matches the column width (310px)
-      // so the floating ghost aligns perfectly with the cursor.
       const list = board.lists.find((entry) => entry.id === activeId);
-      setDragPreview(list ? { type: "list", title: list.title, cardCount: list.cards.length } : null);
+      setDragPreview(list ? { type: "list", list } : null);
     } else if (activeType === "card") {
-      const cardWithList = board.lists
-        .flatMap((list) => list.cards.map((card) => ({ card, listTitle: list.title })))
-        .find((entry) => entry.card.id === activeId);
-      setDragPreview(
-        cardWithList
-          ? {
-              type: "card",
-              title: cardWithList.card.title,
-              listTitle: cardWithList.listTitle,
-              labelCount: cardWithList.card.labels.length,
-            }
-          : null,
-      );
+      const card = board.lists
+        .flatMap((list) => list.cards)
+        .find((card) => card.id === activeId);
+      setDragPreview(card ? { type: "card", card } : null);
     } else {
       setDragPreview(null);
     }
@@ -342,7 +332,7 @@ export function BoardCanvas({
           void handleDragEndInternal(event);
         }}
       >
-        <section className="hide-scrollbar flex min-h-0 flex-1 items-start gap-3 overflow-auto px-4 pb-4 pt-1">
+        <section className="styled-scrollbar flex min-h-0 flex-1 items-start gap-3 overflow-auto px-4 pb-4 pt-1">
           <SortableContext items={board.lists.map((list) => list.id)} strategy={horizontalListSortingStrategy}>
             {board.lists.map((list) => (
               <ListColumn
@@ -359,50 +349,23 @@ export function BoardCanvas({
         </section>
 
         {/*
-          DragOverlay renders once, floating above all content:
-          - List ghost: EXACT column width (min(310px,...)) so the overlay
-            left/right edges align pixel-perfectly with the cursor grab point.
-          - Card ghost: 288px = 310px column − 20px list padding − 2px cards-div padding,
-            matching the actual rendered card width.
-          The dragged original (list/card) is set to opacity:0 so only the
-          overlay is visible — no double-image, no positional mismatch.
+          DragOverlay renders once, floating above all content.
+          Rendering the exact same components ensures 100% pixel-perfect sizing,
+          preventing any cursor offset when matched against the original element.
         */}
-        <DragOverlay>
+        <DragOverlay dropAnimation={null}>
           {dragPreview?.type === "list" ? (
-            <div
-              style={{
-                width: "min(310px, calc(100vw - 64px))",
-                minWidth: "min(310px, calc(100vw - 64px))",
-                borderRadius: "16px",
-                padding: "12px",
-                background: "rgba(248,251,255,0.97)",
-                border: "1px solid rgba(79,156,249,0.5)",
-                boxShadow: "0 28px 60px -20px rgba(14,28,70,0.55), 0 0 0 2px rgba(79,156,249,0.25)",
-                backdropFilter: "blur(10px)",
-              }}
-            >
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[#4f78b6]">List</p>
-              <p className="mt-1 text-sm font-semibold text-[#172b4d]">{dragPreview.title}</p>
-              <p className="mt-0.5 text-xs text-[#5f7599]">{dragPreview.cardCount} cards</p>
-            </div>
+            <ListColumn
+              list={dragPreview.list}
+              visibleCardIds={visibleCardIds}
+              onOpenCard={() => {}}
+              onCreateCard={async () => {}}
+              onRenameList={async () => {}}
+              onDeleteList={async () => {}}
+              isOverlay
+            />
           ) : dragPreview?.type === "card" ? (
-            <div
-              style={{
-                width: "288px",
-                borderRadius: "12px",
-                padding: "12px",
-                background: "rgba(255,255,255,0.98)",
-                border: "1px solid rgba(130,160,220,0.4)",
-                boxShadow: "0 20px 48px -18px rgba(15,30,75,0.6)",
-              }}
-            >
-              <p className="text-[0.68rem] font-semibold uppercase tracking-[0.12em] text-[#6d7e99]">Card</p>
-              <p className="mt-1 text-sm font-semibold text-[#172b4d]">{dragPreview.title}</p>
-              <div className="mt-1.5 flex items-center justify-between text-xs text-[#5f7599]">
-                <span>In {dragPreview.listTitle}</span>
-                {dragPreview.labelCount > 0 ? <span>{dragPreview.labelCount} labels</span> : null}
-              </div>
-            </div>
+            <CardItemVisual card={dragPreview.card} onOpen={() => {}} isOverlay />
           ) : null}
         </DragOverlay>
       </DndContext>

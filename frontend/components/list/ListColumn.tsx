@@ -4,6 +4,7 @@ import { CSS } from "@dnd-kit/utilities";
 import { useDroppable } from "@dnd-kit/core";
 import { useSortable, SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { FormEvent, useEffect, useRef, useState } from "react";
+import clsx from "clsx";
 import { GripVertical, MoreHorizontal, Pencil, Plus, Trash2, X } from "lucide-react";
 import { BoardList } from "@/lib/types";
 import { CardItem } from "@/components/card/CardItem";
@@ -15,6 +16,7 @@ interface ListColumnProps {
   onCreateCard: (listId: string, title: string) => Promise<void>;
   onRenameList: (listId: string, title: string) => Promise<void>;
   onDeleteList: (listId: string) => Promise<void>;
+  isOverlay?: boolean;
 }
 
 const accentPalette = [
@@ -33,9 +35,10 @@ export function ListColumn({
   onCreateCard,
   onRenameList,
   onDeleteList,
+  isOverlay,
 }: ListColumnProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: list.id,
+    id: isOverlay ? `overlay-list-${list.id}` : list.id,
     data: { type: "list", listId: list.id },
   });
 
@@ -43,7 +46,7 @@ export function ListColumn({
   // This makes the list column a valid drop zone for cards even when it's empty,
   // without conflicting with the list's own sortable registration.
   const { setNodeRef: setDroppableRef } = useDroppable({
-    id: `droppable-list-${list.id}`,
+    id: isOverlay ? `overlay-droppable-list-${list.id}` : `droppable-list-${list.id}`,
     data: { type: "list", listId: list.id },
   });
 
@@ -113,29 +116,35 @@ export function ListColumn({
 
   return (
     <section
-      ref={setNodeRef}
-      className="relative flex max-h-[calc(100vh-210px)] w-[min(310px,calc(100vw-64px))] min-w-[min(310px,calc(100vw-64px))] flex-col gap-2 rounded-2xl max-[640px]:w-[88vw] max-[640px]:min-w-[88vw]"
+      ref={isOverlay ? undefined : setNodeRef}
+      className={clsx(
+        "relative flex max-h-[calc(100vh-210px)] w-[min(310px,calc(100vw-64px))] min-w-[min(310px,calc(100vw-64px))] flex-col gap-2 rounded-2xl max-[640px]:w-[88vw] max-[640px]:min-w-[88vw]",
+        isOverlay ? "cursor-grabbing" : ""
+      )}
       style={{
-        ...style,
+        ...(isOverlay ? {} : style),
         background: "rgba(248, 251, 255, 0.94)",
         border: "1px solid rgba(190,210,245,0.7)",
-        boxShadow: "0 20px 50px -28px rgba(14,28,70,0.5), 0 0 0 1px rgba(255,255,255,0.5) inset",
+        boxShadow: isOverlay
+          ? "0 28px 60px -20px rgba(14,28,70,0.55), 0 0 0 2px rgba(79,156,249,0.25)"
+          : "0 20px 50px -28px rgba(14,28,70,0.5), 0 0 0 1px rgba(255,255,255,0.5) inset",
         backdropFilter: "blur(8px)",
         padding: "10px",
         overflow: "visible",
         // Hide the original while dragging — the DragOverlay provides the floating visual.
-        // The element still occupies space (acts as placeholder for others to animate around).
-        opacity: isDragging ? 0 : 1,
+        opacity: isDragging && !isOverlay ? 0 : 1,
       }}
     >
-      {/* Accent left stripe with glow */}
-      <span
-        className="absolute inset-y-0 left-0 w-[3px] rounded-r"
-        style={{
-          backgroundColor: accent.color,
-          boxShadow: `2px 0 10px ${accent.glow}`,
-        }}
-      />
+      {/* Accent left stripe with clipping container to respect rounded corners */}
+      <div className="pointer-events-none absolute inset-0 overflow-hidden rounded-2xl">
+        <span
+          className="absolute inset-y-0 left-0 w-[4px] rounded-r-md"
+          style={{
+            backgroundColor: accent.color,
+            boxShadow: `2px 0 10px ${accent.glow}`,
+          }}
+        />
+      </div>
 
       {/* Column header */}
       <header className="relative flex min-w-0 items-center justify-between gap-2 pl-2">

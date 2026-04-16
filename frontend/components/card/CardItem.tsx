@@ -9,6 +9,7 @@ import { Card } from "@/lib/types";
 interface CardItemProps {
   card: Card;
   onOpen: (cardId: string) => void;
+  isOverlay?: boolean;
 }
 
 /* Deterministic gradient avatar bg seeded from name */
@@ -25,21 +26,23 @@ function memberGradient(name: string) {
   return gradients[idx];
 }
 
-export function CardItem({ card, onOpen }: CardItemProps) {
-  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
-    id: card.id,
-    data: {
-      type: "card",
-      listId: card.listId,
-    },
-  });
-
-  // Use Translate (not Transform) — avoids scale/rotation distortion during drag.
-  // Suppress transition while actively dragging so movement is instant/smooth.
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition: isDragging ? "none" : transition,
-  };
+// Visual component without hooks for DragOverlay
+export function CardItemVisual({
+  card,
+  onOpen,
+  isOverlay,
+  setNodeRef,
+  attributes,
+  listeners,
+  style,
+  isDragging,
+}: CardItemProps & {
+  setNodeRef?: (node: HTMLElement | null) => void;
+  attributes?: any;
+  listeners?: any;
+  style?: React.CSSProperties;
+  isDragging?: boolean;
+}) {
 
   const due = card.dueDate ? new Date(card.dueDate) : null;
   const now = new Date();
@@ -61,10 +64,10 @@ export function CardItem({ card, onOpen }: CardItemProps) {
     <article
       ref={setNodeRef}
       className={clsx(
-        // No transition-all — that fights DnD transforms and causes lag
-        "group relative flex cursor-grab flex-col gap-2.5 rounded-xl bg-white p-3",
+        "group relative flex flex-col gap-2.5 rounded-xl bg-white p-3",
+        isOverlay ? "cursor-grabbing shadow-[0_20px_48px_-18px_rgba(15,30,75,0.6)]" : "cursor-grab shadow-[0_2px_8px_-4px_rgba(14,30,70,0.2)] hover:shadow-[0_8px_24px_-10px_rgba(14,30,70,0.3)]",
         "transition-[box-shadow,opacity] duration-150",
-        isDragging ? "opacity-0" : "hover:shadow-[0_8px_24px_-10px_rgba(14,30,70,0.3)]",
+        isDragging && !isOverlay ? "opacity-0" : "opacity-100",
       )}
       style={{
         ...style,
@@ -183,3 +186,32 @@ export function CardItem({ card, onOpen }: CardItemProps) {
     </article>
   );
 }
+
+// Wrapper component with hooks for normal rendering
+export function CardItem(props: CardItemProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
+    id: props.card.id,
+    data: {
+      type: "card",
+      listId: props.card.listId,
+    },
+  });
+
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition: isDragging ? "none" : transition,
+  };
+
+  return (
+    <CardItemVisual
+      {...props}
+      setNodeRef={setNodeRef}
+      attributes={attributes}
+      listeners={listeners}
+      style={style}
+      isDragging={isDragging}
+    />
+  );
+}
+
+

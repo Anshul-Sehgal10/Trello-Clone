@@ -28,32 +28,31 @@ export function SearchFilterBar({
   const hasFilters = activeFilterCount > 0;
 
   const fieldClass =
-    "min-h-10 w-full rounded-xl px-2.5 py-2 text-sm text-[#1e3a6e] outline-none transition duration-200 placeholder:text-[#789ac4] disabled:cursor-not-allowed";
+    "min-h-10 w-full rounded-xl px-2.5 py-2 text-sm text-white outline-none transition duration-200 placeholder:text-white/60 disabled:cursor-not-allowed";
   const fieldStyle = {
-    background: "rgba(255,255,255,0.82)",
-    border: "1px solid rgba(180,210,250,0.7)",
-    backdropFilter: "blur(8px)",
+    background: "rgba(255,255,255,0.08)",
+    border: "1px solid rgba(255,255,255,0.18)",
   };
   const fieldFocusHandler = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) =>
-    (e.currentTarget.style.border = "1px solid rgba(79,156,249,0.6)");
+    (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.5)");
   const fieldBlurHandler = (e: React.FocusEvent<HTMLInputElement | HTMLSelectElement>) =>
-    (e.currentTarget.style.border = "1px solid rgba(180,210,250,0.7)");
+    (e.currentTarget.style.border = "1px solid rgba(255,255,255,0.18)");
 
   return (
     <section
-      className="relative rounded-2xl p-3"
+      className="relative rounded-2xl p-3.5"
       style={{
-        background: "rgba(220,236,255,0.42)",
-        border: "1px solid rgba(180,210,255,0.55)",
-        boxShadow: "0 12px 40px -24px rgba(14,32,78,0.45)",
+        background: "rgba(0,0,0,0.25)",
+        border: "1px solid rgba(255,255,255,0.12)",
+        boxShadow: "0 12px 40px -24px rgba(0,0,0,0.5)",
         backdropFilter: "blur(14px)",
       }}
     >
       {/* Header row */}
-      <div className="mb-2.5 flex items-center justify-between px-1">
+      <div className="mb-3 flex items-center justify-between px-1">
         <div className="flex items-center gap-2">
-          <Filter className="h-3.5 w-3.5 text-[#3a6abf]" />
-          <p className="m-0 text-xs font-semibold uppercase tracking-[0.1em] text-[#3a6abf]">
+          <Filter className="h-4 w-4 text-white/80" />
+          <p className="m-0 text-xs font-semibold uppercase tracking-[0.1em] text-white/80">
             Filter cards
           </p>
         </div>
@@ -63,13 +62,13 @@ export function SearchFilterBar({
             <span
               className="flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-xs font-semibold"
               style={{
-                background: "rgba(79,156,249,0.15)",
-                color: "#2563eb",
-                border: "1px solid rgba(79,156,249,0.3)",
+                background: "rgba(255,255,255,0.12)",
+                color: "#e2e8f0",
+                border: "1px solid rgba(255,255,255,0.2)",
               }}
             >
               <span
-                className="h-1.5 w-1.5 rounded-full bg-[#3b82f6]"
+                className="h-1.5 w-1.5 rounded-full bg-white"
                 style={{ animation: "pulseDot 1.5s ease-in-out infinite" }}
               />
               {activeFilterCount} active
@@ -82,7 +81,7 @@ export function SearchFilterBar({
       <div className="grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
         {/* Search */}
         <div className="relative md:col-span-2 2xl:col-span-2">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5270a7]" />
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
           <input
             className={`${fieldClass} pl-9`}
             style={fieldStyle}
@@ -96,7 +95,7 @@ export function SearchFilterBar({
 
         {/* Labels */}
         <div className="relative">
-          <Tag className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5270a7]" />
+          <Tag className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
           <select
             className={`${fieldClass} pl-9 cursor-pointer appearance-none`}
             style={fieldStyle}
@@ -105,9 +104,9 @@ export function SearchFilterBar({
             value={filters.labelId}
             onChange={(event) => onChange({ labelId: event.target.value })}
           >
-            <option value="">All labels</option>
+            <option value="" className="text-gray-900">All labels</option>
             {labels.map((label) => (
-              <option key={label.id} value={label.id}>
+              <option key={label.id} value={label.id} className="text-gray-900">
                 {label.title || "Untitled label"}
               </option>
             ))}
@@ -116,7 +115,7 @@ export function SearchFilterBar({
 
         {/* Members */}
         <div className="relative">
-          <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5270a7]" />
+          <UserRound className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
           <select
             className={`${fieldClass} pl-9 cursor-pointer appearance-none`}
             style={fieldStyle}
@@ -125,9 +124,9 @@ export function SearchFilterBar({
             value={filters.memberId}
             onChange={(event) => onChange({ memberId: event.target.value })}
           >
-            <option value="">All members</option>
+            <option value="" className="text-gray-900">All members</option>
             {members.map((member) => (
-              <option key={member.id} value={member.id}>
+              <option key={member.id} value={member.id} className="text-gray-900">
                 {member.name}
               </option>
             ))}
@@ -136,10 +135,10 @@ export function SearchFilterBar({
 
         {/* Due from */}
         <div className="relative">
-          <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5270a7]" />
+          <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
           <input
             className={`${fieldClass} pl-9`}
-            style={fieldStyle}
+            style={{ ...fieldStyle, colorScheme: "dark" }}
             onFocus={fieldFocusHandler}
             onBlur={fieldBlurHandler}
             type="date"
@@ -151,10 +150,10 @@ export function SearchFilterBar({
 
         {/* Due to */}
         <div className="relative">
-          <CalendarRange className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#5270a7]" />
+          <CalendarRange className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
           <input
             className={`${fieldClass} pl-9`}
-            style={fieldStyle}
+            style={{ ...fieldStyle, colorScheme: "dark" }}
             onFocus={fieldFocusHandler}
             onBlur={fieldBlurHandler}
             type="date"
@@ -166,13 +165,11 @@ export function SearchFilterBar({
 
         {/* Clear */}
         <button
-          className="flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-50"
+          className="flex min-h-10 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition duration-200 disabled:cursor-not-allowed disabled:opacity-40"
           style={{
-            background: hasFilters
-              ? "linear-gradient(135deg, #4f9cf9 0%, #7b5cf6 100%)"
-              : "rgba(255,255,255,0.5)",
-            color: hasFilters ? "#fff" : "#789ac4",
-            border: hasFilters ? "none" : "1px solid rgba(180,210,250,0.6)",
+            background: hasFilters ? "rgba(244,63,94,0.85)" : "rgba(255,255,255,0.05)",
+            color: hasFilters ? "#fff" : "rgba(255,255,255,0.4)",
+            border: hasFilters ? "1px solid rgba(244,63,94,0.6)" : "1px solid rgba(255,255,255,0.1)",
           }}
           type="button"
           onClick={onClear}

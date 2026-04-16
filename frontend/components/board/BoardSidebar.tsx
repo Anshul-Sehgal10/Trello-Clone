@@ -10,20 +10,12 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { restrictToWindowEdges } from "@dnd-kit/modifiers";
+import { snapCenterToCursor } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
-import { FormEvent, useState } from "react";
-import {
-  AlertTriangle,
-  GripVertical,
-  LayoutGrid,
-  Plus,
-  Search,
-  Trash2,
-  X,
-} from "lucide-react";
+import { FormEvent, useEffect, useRef, useState } from "react";
+import { ChevronsLeft, ChevronsRight, GripVertical, LayoutGrid, Plus, Search, Trash2, X } from "lucide-react";
 import { Modal } from "@/components/common/Modal";
 import type { BoardSummary, Id } from "@/lib/types";
 
@@ -34,132 +26,109 @@ interface BoardSidebarProps {
   onCreateBoard: (title: string, description: string) => Promise<void>;
   onDeleteBoard: (boardId: Id) => Promise<void>;
   onReorderBoards: (activeId: Id, overId: Id) => Promise<void>;
+  collapsed: boolean;
+  onToggleCollapsed: () => void;
   loading?: boolean;
 }
 
 interface SortableBoardCardProps {
   board: BoardSummary;
   active: boolean;
+  compact: boolean;
   onSelectBoard: (boardId: Id) => void;
   onDeleteBoard: (board: BoardSummary) => void;
 }
 
-/* Deterministic gradient per board based on title */
-function boardGradient(title: string) {
-  const gradients = [
-    "linear-gradient(135deg, #4f9cf9 0%, #7b5cf6 100%)",
-    "linear-gradient(135deg, #f59e0b 0%, #f43f5e 100%)",
-    "linear-gradient(135deg, #22c55e 0%, #4f9cf9 100%)",
-    "linear-gradient(135deg, #a78bfa 0%, #ec4899 100%)",
-    "linear-gradient(135deg, #14b8a6 0%, #4f9cf9 100%)",
-    "linear-gradient(135deg, #f97316 0%, #f59e0b 100%)",
-  ];
-  const idx = title.charCodeAt(0) % gradients.length;
-  return gradients[idx];
-}
-
-function SortableBoardCard({ board, active, onSelectBoard, onDeleteBoard }: SortableBoardCardProps) {
+function SortableBoardCard({ board, active, compact, onSelectBoard, onDeleteBoard }: SortableBoardCardProps) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({
     id: board.id,
     data: { type: "board" },
   });
 
-  // Use Translate (not Transform) for smooth drag without scale distortion
-  const style = {
-    transform: CSS.Translate.toString(transform),
-    transition: isDragging ? "none" : transition,
-  };
+  const initials = board.title
+    .split(" ")
+    .map((part) => part[0])
+    .join("")
+    .slice(0, 2)
+    .toUpperCase();
+  const dragProps = compact ? { ...attributes, ...listeners } : {};
 
-  const gradient = boardGradient(board.title);
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
 
   return (
     <div
       ref={setNodeRef}
       style={style}
+      {...dragProps}
       className={clsx(
-        "group relative w-full overflow-hidden rounded-2xl border p-3 text-left transition-[border-color,background,box-shadow] duration-200",
-        active
-          ? "border-[#4f9cf9]/50 bg-[#1e3060]/80 shadow-[0_0_0_1px_rgba(79,156,249,0.2),0_8px_24px_-12px_rgba(79,156,249,0.3)]"
-          : "border-white/8 bg-white/5 hover:border-white/15 hover:bg-white/8",
-        isDragging ? "opacity-50" : "",
+        `group relative w-full overflow-hidden rounded-2xl border p-3 text-left transition duration-200 ${
+          active
+            ? "border-[#85b6ff]/40 bg-[#2b3b5f] text-white"
+            : "border-white/10 bg-white/5 text-[#e4efff] hover:border-white/20 hover:bg-white/10"
+        }`,
+        { "cursor-grab px-1.5 py-1.5 active:cursor-grabbing": compact },
+        { "opacity-70": isDragging },
       )}
       title={board.title}
     >
-      {/* Active indicator bar */}
-      {active ? (
-        <span
-          className="absolute inset-y-0 left-0 w-[3px] rounded-r"
-          style={{ background: gradient }}
-        />
-      ) : null}
-
-      <div className="flex items-start gap-2.5 pl-1">
-        {/* Drag handle */}
+      {compact ? (
         <button
-          className="mt-0.5 grid h-7 w-7 shrink-0 cursor-grab place-items-center rounded-lg active:cursor-grabbing transition duration-150"
-          style={{
-            border: "1px solid rgba(255,255,255,0.1)",
-            background: "rgba(255,255,255,0.06)",
-            color: "rgba(160,185,230,0.7)",
-          }}
+          className={clsx(
+            "mx-auto flex h-10 w-10 items-center justify-center rounded-xl border text-xs font-semibold transition",
+            active
+              ? "border-[#9bc1ff] bg-[#3563ad] text-white"
+              : "border-white/20 bg-white/10 text-[#dce9ff] hover:bg-white/20",
+          )}
+          onClick={() => onSelectBoard(board.id)}
           type="button"
-          aria-label={`Drag ${board.title}`}
-          {...attributes}
-          {...listeners}
+          aria-label={board.title}
+          title={board.title}
         >
-          <GripVertical className="h-3.5 w-3.5" />
+          {initials}
         </button>
-
-        {/* Board info */}
-        <button className="min-w-0 flex-1 text-left" onClick={() => onSelectBoard(board.id)} type="button">
-          <div className="flex items-center gap-2">
-            <div
-              className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md"
-              style={{ background: gradient }}
+      ) : (
+        <>
+          {active ? <span className="absolute inset-y-2 left-0 w-1 rounded-r bg-[#4f9cf9]" /> : null}
+          <div className="flex items-start gap-2.5 pl-1">
+            <button
+              className="mt-0.5 grid h-7 w-7 shrink-0 cursor-grab place-items-center rounded-lg border border-white/15 bg-white/10 text-xs active:cursor-grabbing"
+              type="button"
+              aria-label={`Drag ${board.title}`}
+              {...attributes}
+              {...listeners}
             >
-              <LayoutGrid className="h-3 w-3 text-white" />
-            </div>
-            <strong className="block truncate text-sm font-semibold text-[#dde8ff]">{board.title}</strong>
+              <GripVertical className="h-4 w-4" />
+            </button>
+
+            <button className="min-w-0 flex-1 text-left" onClick={() => onSelectBoard(board.id)} type="button">
+              <div className="flex items-center gap-2">
+                <LayoutGrid className="h-4 w-4 shrink-0" />
+                <strong className="block truncate text-sm font-semibold">{board.title}</strong>
+              </div>
+              <p className="m-0 mt-1 max-h-9 overflow-hidden wrap-break-word text-xs text-[#c6d7f5]">
+                {board.description || "No description"}
+              </p>
+            </button>
+
+            <button
+              className="rounded-lg border border-white/20 bg-white/10 p-1.5 text-white/85 transition hover:bg-white/20 hover:text-white"
+              type="button"
+              aria-label={`Delete ${board.title}`}
+              onClick={() => onDeleteBoard(board)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </button>
           </div>
-          <p className="m-0 mt-1.5 line-clamp-2 max-h-8 overflow-hidden text-xs leading-relaxed text-[#8aabdb]">
-            {board.description || "No description"}
-          </p>
-        </button>
+        </>
+      )}
 
-        {/* Delete button */}
-        <button
-          className="shrink-0 rounded-lg p-1.5 transition duration-150"
-          style={{
-            border: "1px solid rgba(255,255,255,0.12)",
-            background: "rgba(255,255,255,0.05)",
-            color: "rgba(180,195,230,0.7)",
-          }}
-          onMouseEnter={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background = "rgba(244, 63, 94, 0.15)";
-            el.style.borderColor = "rgba(244, 63, 94, 0.4)";
-            el.style.color = "#f87171";
-          }}
-          onMouseLeave={(e) => {
-            const el = e.currentTarget as HTMLButtonElement;
-            el.style.background = "rgba(255,255,255,0.05)";
-            el.style.borderColor = "rgba(255,255,255,0.12)";
-            el.style.color = "rgba(180,195,230,0.7)";
-          }}
-          type="button"
-          aria-label={`Delete ${board.title}`}
-          onClick={() => onDeleteBoard(board)}
-        >
-          <Trash2 className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {/* Bottom shimmer line */}
       <span
-        className={`pointer-events-none absolute inset-x-4 bottom-0 h-px transition-opacity ${
-          active ? "opacity-60" : "opacity-0 group-hover:opacity-40"
+        className={`pointer-events-none absolute inset-x-4 bottom-0 h-px bg-linear-to-r from-transparent via-white/20 to-transparent transition-opacity ${
+          active ? "opacity-80" : "opacity-0 group-hover:opacity-70"
         }`}
-        style={{ background: "linear-gradient(to right, transparent, rgba(100,150,255,0.4), transparent)" }}
       />
     </div>
   );
@@ -172,6 +141,8 @@ export function BoardSidebar({
   onCreateBoard,
   onDeleteBoard,
   onReorderBoards,
+  collapsed,
+  onToggleCollapsed,
   loading = false,
 }: BoardSidebarProps) {
   const [newBoardTitle, setNewBoardTitle] = useState("");
@@ -182,6 +153,8 @@ export function BoardSidebar({
   const [isDeletingBoard, setIsDeletingBoard] = useState(false);
   const [draggedBoard, setDraggedBoard] = useState<BoardSummary | null>(null);
   const [boardSearch, setBoardSearch] = useState("");
+  const [isCompactSearchOpen, setIsCompactSearchOpen] = useState(false);
+  const compactSearchRef = useRef<HTMLDivElement | null>(null);
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 6 } }));
 
@@ -214,83 +187,133 @@ export function BoardSidebar({
     }
   };
 
-  /* Dark-theme input */
-  const darkInput =
-    "w-full rounded-xl px-3 py-2.5 text-sm text-[#dce8ff] outline-none transition duration-200 placeholder:text-[#5a7ab0] disabled:cursor-not-allowed disabled:opacity-60";
-  const darkInputStyle = {
-    background: "rgba(255,255,255,0.06)",
-    border: "1px solid rgba(255,255,255,0.12)",
-  };
+  const inputBase =
+    "w-full rounded-xl border border-white/15 bg-white/10 px-3 py-2 text-sm text-white outline-none transition duration-200 placeholder:text-white/60 focus:border-[#5fa8ff] focus:ring-2 focus:ring-[#5fa8ff]/25 disabled:cursor-not-allowed disabled:opacity-60";
+  const buttonBase =
+    "w-full rounded-xl border border-transparent bg-gradient-to-r from-[#4f9cf9] to-[#7b8dff] px-3 py-2 text-sm font-semibold text-white transition duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60";
+  const filteredBoards = boards.filter((board) => board.title.toLowerCase().includes(boardSearch.trim().toLowerCase()));
 
-  const filteredBoards = boards.filter((board) =>
-    board.title.toLowerCase().includes(boardSearch.trim().toLowerCase()),
-  );
+  useEffect(() => {
+    if (!collapsed) {
+      setIsCompactSearchOpen(false);
+      return;
+    }
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!compactSearchRef.current?.contains(event.target as Node)) {
+        setIsCompactSearchOpen(false);
+      }
+    };
+
+    window.addEventListener("pointerdown", handlePointerDown);
+    return () => window.removeEventListener("pointerdown", handlePointerDown);
+  }, [collapsed]);
 
   return (
     <aside
-      className="flex h-full w-full min-h-0 min-w-0 flex-col gap-4 rounded-3xl p-4 text-[#ecf4ff]"
-      style={{
-        background: "linear-gradient(160deg, rgba(14,24,52,0.98) 0%, rgba(10,18,40,0.99) 100%)",
-        border: "1px solid rgba(255,255,255,0.08)",
-        boxShadow: "0 30px 80px -45px rgba(6, 12, 32, 0.85)",
-        backdropFilter: "blur(20px)",
-      }}
+      className={clsx(
+        "flex h-full w-full min-h-0 min-w-0 flex-col gap-4 rounded-3xl border border-white/10 bg-[#1f2943]/95 p-4 text-[#ecf4ff] shadow-[0_30px_80px_-45px_rgba(9,19,44,0.8)] backdrop-blur-xl",
+        collapsed ? "items-center p-2.5" : "",
+      )}
     >
-      {/* Header */}
       <div className="flex items-center justify-between px-1">
+        {collapsed ? null : (
+          <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.08em] text-[#d7e5ff]">Boards</h2>
+        )}
         <div className="flex items-center gap-2">
-          <div
-            className="h-4 w-1 rounded-full"
-            style={{ background: "linear-gradient(to bottom, #4f9cf9, #7b5cf6)" }}
-          />
-          <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.1em] text-[#c8d9f5]">
-            Boards
-          </h2>
+          {collapsed ? null : (
+            <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-[#d9e7ff]">
+              {boards.length}
+            </span>
+          )}
+          {collapsed ? (
+            <div ref={compactSearchRef} className="relative">
+              <button
+                type="button"
+                onClick={() => setIsCompactSearchOpen((value) => !value)}
+                className="grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-white/10 text-white/90 transition hover:bg-white/20"
+                aria-label="Search boards"
+                title="Search boards"
+              >
+                <Search className="h-4 w-4" />
+              </button>
+
+              <div
+                className={`absolute left-full top-0 z-30 ml-2 w-56 rounded-xl border border-white/20 bg-[#1f2943]/95 p-2 shadow-lg backdrop-blur transition ${
+                  isCompactSearchOpen ? "opacity-100" : "pointer-events-none opacity-0"
+                }`}
+              >
+                <div className="relative">
+                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9fbbeb]" />
+                  <input
+                    className="w-full rounded-lg border border-white/15 bg-white/10 py-1.5 pl-8 pr-7 text-xs text-white outline-none placeholder:text-white/60 focus:border-[#5fa8ff]"
+                    placeholder="Search boards"
+                    value={boardSearch}
+                    onChange={(event) => setBoardSearch(event.target.value)}
+                    autoFocus
+                  />
+                  {boardSearch ? (
+                    <button
+                      type="button"
+                      onClick={() => setBoardSearch("")}
+                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-white/70 hover:text-white"
+                      aria-label="Clear search"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  ) : null}
+                </div>
+              </div>
+            </div>
+          ) : null}
+          <button
+            type="button"
+            onClick={onToggleCollapsed}
+            className="grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-white/10 text-white/90 transition hover:bg-white/20"
+            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+          >
+            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
+          </button>
         </div>
-        <span
-          className="rounded-full px-2 py-0.5 text-xs font-semibold text-[#8aaee0]"
-          style={{ background: "rgba(79,156,249,0.1)", border: "1px solid rgba(79,156,249,0.2)" }}
-        >
-          {boards.length}
-        </span>
       </div>
 
-      {/* Search + New board */}
-      <div className="flex flex-col gap-2">
-        <div className="relative">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#5a7ab0]" />
-          <input
-            className={`${darkInput} pl-9`}
-            style={darkInputStyle}
-            placeholder="Search boards…"
-            value={boardSearch}
-            onChange={(event) => setBoardSearch(event.target.value)}
-          />
-          {boardSearch ? (
-            <button
-              type="button"
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-[#5a7ab0] transition hover:text-[#dce8ff]"
-              onClick={() => setBoardSearch("")}
-              aria-label="Clear search"
-            >
-              <X className="h-3.5 w-3.5" />
-            </button>
-          ) : null}
-        </div>
+      {collapsed ? (
         <button
           type="button"
           onClick={() => setIsCreateModalOpen(true)}
-          className="flex w-full items-center justify-center gap-2 rounded-xl py-2.5 text-sm font-semibold text-white transition duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-          style={{ background: "linear-gradient(135deg, #4f9cf9 0%, #7b5cf6 100%)" }}
-          disabled={loading}
+          className="grid h-10 w-10 place-items-center rounded-xl border border-white/20 bg-gradient-to-r from-[#4f9cf9] to-[#7b8dff] text-white transition hover:brightness-110"
+          aria-label="New board"
+          title="New board"
         >
           <Plus className="h-4 w-4" />
-          New board
         </button>
-      </div>
+      ) : (
+        <div className="flex flex-col gap-2">
+          <div className="relative">
+            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/60" />
+            <input
+              className={`${inputBase} pl-8`}
+              placeholder="Search boards"
+              value={boardSearch}
+              onChange={(event) => setBoardSearch(event.target.value)}
+            />
+          </div>
+          <button
+            type="button"
+            onClick={() => setIsCreateModalOpen(true)}
+            className={buttonBase}
+            disabled={loading}
+          >
+            <span className="inline-flex items-center justify-center gap-2">
+              <Plus className="h-4 w-4" />
+              New board
+            </span>
+          </button>
+        </div>
+      )}
 
-      {/* Board list */}
-      <div className="hide-scrollbar min-h-0 flex-1 overflow-y-auto">
+      <div className="hide-scrollbar min-h-0 overflow-y-auto pr-1">
         <DndContext
           sensors={sensors}
           collisionDetection={closestCenter}
@@ -307,73 +330,54 @@ export function BoardSidebar({
           }}
         >
           <SortableContext items={filteredBoards.map((board) => board.id)} strategy={verticalListSortingStrategy}>
-            <div className="flex min-h-0 flex-col gap-1.5">
+            <div className="flex min-h-0 flex-col gap-2">
               {filteredBoards.map((board) => (
                 <SortableBoardCard
                   key={board.id}
                   board={board}
                   active={selectedBoardId === board.id}
+                  compact={collapsed}
                   onSelectBoard={onSelectBoard}
                   onDeleteBoard={setPendingDeleteBoard}
                 />
               ))}
               {filteredBoards.length === 0 ? (
-                <div className="mt-6 flex flex-col items-center gap-2 px-2 text-center">
-                  <LayoutGrid className="h-8 w-8 text-[#8aaee0] opacity-20" />
-                  <p className="m-0 text-xs text-[#5a7ab0]">No boards found.</p>
-                </div>
+                <p className="m-0 px-2 py-1 text-xs text-[#c6d7f5]/80">No boards found.</p>
               ) : null}
             </div>
           </SortableContext>
 
-          <DragOverlay modifiers={[restrictToWindowEdges]}>
+          <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
             {draggedBoard ? (
-              <div
-                className="w-[min(280px,calc(100vw-64px))] rounded-2xl p-3 text-white"
-                style={{
-                  background: "rgba(30,48,96,0.97)",
-                  border: "1px solid rgba(79,156,249,0.4)",
-                  boxShadow: "0 24px 55px -20px rgba(8,16,44,0.88)",
-                  backdropFilter: "blur(12px)",
-                }}
-              >
+              <div className="w-[min(320px,calc(100vw-64px))] rounded-2xl border border-[#85b6ff]/45 bg-[#2b3b5f]/95 p-3 text-white shadow-[0_20px_50px_-24px_rgba(11,23,51,0.85)] backdrop-blur">
                 <div className="flex items-center gap-2">
-                  <LayoutGrid className="h-4 w-4 shrink-0 text-[#4f9cf9]" />
+                  <LayoutGrid className="h-4 w-4 shrink-0" />
                   <strong className="truncate text-sm font-semibold">{draggedBoard.title}</strong>
                 </div>
-                <p className="mt-1 truncate text-xs text-[#8aaee0]">
-                  {draggedBoard.description || "No description"}
-                </p>
+                <p className="mt-1 truncate text-xs text-[#d7e5ff]">{draggedBoard.description || "No description"}</p>
               </div>
             ) : null}
           </DragOverlay>
         </DndContext>
       </div>
 
-      {/* Create board modal */}
       <Modal
         open={isCreateModalOpen}
         onClose={() => {
           if (isCreating) return;
           setIsCreateModalOpen(false);
         }}
-        title="Create new board"
+        title="New board"
       >
-        <form className="space-y-4" onSubmit={handleSubmit}>
+        <form className="space-y-3" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <label htmlFor="new-board-title" className="text-xs font-semibold uppercase tracking-wider text-[#6b8abf]">
+            <label htmlFor="new-board-title" className="text-sm font-medium text-slate-700">
               Title
             </label>
             <input
               id="new-board-title"
-              className="w-full rounded-xl px-3.5 py-2.5 text-sm text-[#dce8ff] outline-none transition duration-200 placeholder:text-[#3f5b8a] disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(79,156,249,0.5)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
-              placeholder="My awesome project"
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-[#5fa8ff] focus:ring-2 focus:ring-[#5fa8ff]/25"
+              placeholder="Board title"
               value={newBoardTitle}
               onChange={(event) => setNewBoardTitle(event.target.value)}
               disabled={isCreating || loading}
@@ -382,19 +386,13 @@ export function BoardSidebar({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="new-board-description" className="text-xs font-semibold uppercase tracking-wider text-[#6b8abf]">
+            <label htmlFor="new-board-description" className="text-sm font-medium text-slate-700">
               Description
             </label>
             <textarea
               id="new-board-description"
-              className="w-full min-h-[80px] resize-none rounded-xl px-3.5 py-2.5 text-sm text-[#dce8ff] outline-none transition duration-200 placeholder:text-[#3f5b8a] disabled:cursor-not-allowed disabled:opacity-60"
-              style={{
-                background: "rgba(255,255,255,0.06)",
-                border: "1px solid rgba(255,255,255,0.12)",
-              }}
-              onFocus={(e) => (e.currentTarget.style.borderColor = "rgba(79,156,249,0.5)")}
-              onBlur={(e) => (e.currentTarget.style.borderColor = "rgba(255,255,255,0.12)")}
-              placeholder="What is this board for? (optional)"
+              className="w-full min-h-20 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-[#5fa8ff] focus:ring-2 focus:ring-[#5fa8ff]/25"
+              placeholder="Description (optional)"
               value={newBoardDescription}
               onChange={(event) => setNewBoardDescription(event.target.value)}
               disabled={isCreating || loading}
@@ -402,31 +400,26 @@ export function BoardSidebar({
             />
           </div>
 
-          <div className="flex justify-end gap-2.5 pt-1">
+          <div className="flex justify-end gap-2">
             <button
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
               disabled={isCreating}
-              className="rounded-xl px-4 py-2 text-sm font-medium text-[#8aaee0] transition duration-150 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ border: "1px solid rgba(255,255,255,0.12)" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               type="submit"
               disabled={isCreating || loading || !newBoardTitle.trim()}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #4f9cf9 0%, #7b5cf6 100%)" }}
+              className="rounded-lg border border-[#4f9cf9] bg-[#4f9cf9] px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-[#3f8ff2] disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isCreating ? "Creating…" : "Create board"}
+              {isCreating ? "Creating..." : "Create board"}
             </button>
           </div>
         </form>
       </Modal>
 
-      {/* Delete confirmation modal */}
       <Modal
         open={pendingDeleteBoard !== null}
         onClose={() => {
@@ -436,35 +429,25 @@ export function BoardSidebar({
         title="Delete board?"
       >
         <div className="space-y-4">
-          <div
-            className="flex items-start gap-3 rounded-xl p-3.5"
-            style={{ background: "rgba(244,63,94,0.08)", border: "1px solid rgba(244,63,94,0.2)" }}
-          >
-            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-[#f87171]" />
-            <p className="m-0 text-sm leading-relaxed text-[#c8d9f5]">
-              This will permanently delete{" "}
-              <span className="font-semibold text-white">{pendingDeleteBoard?.title}</span> and all its
-              lists and cards. This action cannot be undone.
-            </p>
-          </div>
-          <div className="flex justify-end gap-2.5">
+          <p className="text-sm text-slate-700">
+            This will permanently delete
+            <span className="font-semibold text-slate-900"> {pendingDeleteBoard?.title}</span>.
+            This action cannot be undone.
+          </p>
+          <div className="flex justify-end gap-2">
             <button
               onClick={() => setPendingDeleteBoard(null)}
               disabled={isDeletingBoard}
-              className="rounded-xl px-4 py-2 text-sm font-medium text-[#8aaee0] transition duration-150 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ border: "1px solid rgba(255,255,255,0.12)" }}
-              onMouseEnter={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "rgba(255,255,255,0.07)")}
-              onMouseLeave={(e) => ((e.currentTarget as HTMLButtonElement).style.background = "transparent")}
+              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
             <button
               onClick={handleConfirmDeleteBoard}
               disabled={isDeletingBoard}
-              className="rounded-xl px-4 py-2 text-sm font-semibold text-white transition duration-200 hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
-              style={{ background: "linear-gradient(135deg, #ef4444 0%, #be123c 100%)" }}
+              className="rounded-lg border border-rose-700 bg-rose-600 px-3 py-1.5 text-sm font-semibold text-white transition hover:bg-rose-700 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {isDeletingBoard ? "Deleting…" : "Delete board"}
+              {isDeletingBoard ? "Deleting..." : "Delete board"}
             </button>
           </div>
         </div>

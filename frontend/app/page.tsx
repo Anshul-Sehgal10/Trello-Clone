@@ -60,6 +60,7 @@ export default function Home() {
   const [selectedCardId, setSelectedCardId] = useState<Id | null>(null);
   const [selectedCardDetail, setSelectedCardDetail] = useState<Card | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [loadingBoards, setLoadingBoards] = useState(true);
   const [loadingBoard, setLoadingBoard] = useState(false);
@@ -482,38 +483,28 @@ export default function Home() {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
-    if (!board || !over) return;
+    if (!board || !over || active.id === over.id) return;
 
     const activeId = String(active.id);
-    const rawOverId = String(over.id);
-
-    // Normalize droppable-list-{id} IDs back to the list's real ID
-    const overId = rawOverId.startsWith("droppable-list-")
-      ? rawOverId.slice("droppable-list-".length)
-      : rawOverId;
-
-    if (activeId === overId) return;
-
+    const overId = String(over.id);
     const activeTypeRaw = active.data.current?.type as "list" | "card" | undefined;
     const activeType: "list" | "card" | undefined =
       activeTypeRaw ?? (board.lists.some((list) => list.id === activeId) ? "list" : "card");
 
-    // ── List reorder ──
     if (activeType === "list") {
       const overDataType = over.data.current?.type as "list" | "card" | undefined;
-      // Find the target list ID
-      const targetListId =
+      const overListId =
         overDataType === "list"
           ? overId
           : overDataType === "card"
-            ? (board.lists.find((list) => list.cards.some((card) => card.id === overId))?.id ?? "")
+            ? String(over.data.current?.listId ?? "")
             : board.lists.some((list) => list.id === overId)
               ? overId
-              : "";
+              : (board.lists.find((list) => list.cards.some((card) => card.id === overId))?.id ?? "");
 
-      if (!targetListId) return;
+      if (!overListId) return;
 
-      const nextBoard = reorderLists(board, activeId, targetListId);
+      const nextBoard = reorderLists(board, activeId, overListId);
       if (nextBoard === board) return;
 
       setBoard(nextBoard);
@@ -533,14 +524,10 @@ export default function Home() {
       return;
     }
 
-    // ── Card move / reorder ──
     if (activeType === "card") {
-      const overDataType = over.data.current?.type as "list" | "card" | undefined;
-      // Determine if the card was dropped ON a list vs ON another card
-      const inferredOverType: "list" | "card" =
-        overDataType === "list" || board.lists.some((list) => list.id === overId)
-          ? "list"
-          : "card";
+      const inferredOverType =
+        (over.data.current?.type as "list" | "card" | undefined) ??
+        (board.lists.some((list) => list.id === overId) ? "list" : "card");
 
       const moved = moveCard(board, activeId, overId, inferredOverType);
       if (!moved) return;
@@ -572,7 +559,13 @@ export default function Home() {
 
   return (
     <div className="flex h-dvh max-h-dvh flex-col gap-3.5 overflow-hidden p-2.5 sm:p-3.5 lg:flex-row lg:items-stretch">
-      <div className="relative hidden min-w-0 shrink-0 self-stretch overflow-hidden lg:block lg:w-[300px] lg:min-w-[300px]">
+      <div
+        className={`relative min-w-0 shrink-0 self-stretch overflow-hidden origin-left transition-[width,flex-basis,max-width] duration-300 ease-out will-change-[width] ${
+          isSidebarCollapsed
+            ? "w-full lg:basis-[84px] lg:w-[84px] lg:max-w-[84px]"
+            : "w-full lg:basis-[300px] lg:w-[300px] lg:max-w-[300px]"
+        }`}
+      >
         <BoardSidebar
           boards={boards}
           selectedBoardId={selectedBoardId}
@@ -580,35 +573,26 @@ export default function Home() {
           onCreateBoard={handleCreateBoard}
           onDeleteBoard={handleDeleteBoard}
           onReorderBoards={handleReorderBoards}
+          collapsed={isSidebarCollapsed}
+          onToggleCollapsed={() => setIsSidebarCollapsed((value) => !value)}
           loading={loadingBoards}
         />
       </div>
 
-      <main
-        className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/35 bg-white/10 shadow-[0_38px_90px_-42px_rgba(8,16,40,0.92)] backdrop-blur-xl"
-        style={{
-          backgroundColor: board?.color ?? "#275fa5",
-          backgroundImage: board?.background ? `url(${board.background})` : undefined,
-          backgroundSize: "cover",
-          backgroundPosition: "center",
-        }}
-      >
-        {error ? (
-          <div className="flex items-center gap-3 px-4 py-3" style={{ background: "rgba(244,63,94,0.12)", borderBottom: "1px solid rgba(244,63,94,0.25)" }}>
-            <div className="h-2 w-2 rounded-full bg-[#f87171]" style={{ animation: "pulseDot 1.5s ease-in-out infinite" }} />
-            <p className="m-0 text-sm font-medium text-[#fca5a5]">{error}</p>
-          </div>
-        ) : null}
+      <main className="relative flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden rounded-3xl border border-white/35 shadow-[0_38px_90px_-42px_rgba(8,16,40,0.92)]">
+        <div
+          className="absolute inset-0 -z-10 bg-white/10 backdrop-blur-xl"
+          style={{
+            backgroundColor: board?.color ?? "#275fa5",
+            backgroundImage: board?.background ? `url(${board.background})` : undefined,
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+          }}
+        />
+        {error ? <p className="m-0 bg-[#b42318] px-3.5 py-2.5 text-sm text-white">{error}</p> : null}
 
         {loadingBoard ? (
-          <div className="grid min-h-[80vh] place-items-center">
-            <div className="flex flex-col items-center gap-4">
-              <div className="relative h-12 w-12">
-                <div className="absolute inset-0 rounded-full" style={{ background: "linear-gradient(135deg, #4f9cf9, #7b5cf6)", animation: "spin 1.2s linear infinite", WebkitMaskImage: "radial-gradient(circle, transparent 55%, black 55%)" }} />
-              </div>
-              <p className="text-[0.9rem] font-medium text-[#8aaee0]">Loading board…</p>
-            </div>
-          </div>
+          <div className="grid min-h-[80vh] place-items-center text-base text-[#f7fbff]">Loading board...</div>
         ) : board ? (
           <>
             <BoardCanvas
@@ -653,20 +637,7 @@ export default function Home() {
             />
           </>
         ) : (
-          <div className="grid min-h-[80vh] place-items-center">
-            <div className="flex flex-col items-center gap-3 text-center">
-              <div
-                className="flex h-16 w-16 items-center justify-center rounded-2xl"
-                style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.12)" }}
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-8 w-8 text-[#4f9cf9]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 17V7m0 10a2 2 0 01-2 2H5a2 2 0 01-2-2V7a2 2 0 012-2h2a2 2 0 012 2m0 10a2 2 0 002 2h2a2 2 0 002-2M9 7a2 2 0 012-2h2a2 2 0 012 2m0 10V7m0 10a2 2 0 002 2h2a2 2 0 002-2V7a2 2 0 00-2-2h-2a2 2 0 00-2 2" />
-                </svg>
-              </div>
-              <p className="text-base font-semibold text-[#dde8ff]">Create a board to get started</p>
-              <p className="text-sm text-[#6b8abf]">Use the sidebar to create your first board</p>
-            </div>
-          </div>
+          <div className="grid min-h-[80vh] place-items-center text-base text-[#f7fbff]">Create a board to get started.</div>
         )}
 
         <ToastStack items={toasts} onDismiss={(id) => setToasts((prev) => prev.filter((item) => item.id !== id))} />

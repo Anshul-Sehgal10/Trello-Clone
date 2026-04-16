@@ -65,7 +65,7 @@ export function CardItemVisual({
       ref={setNodeRef}
       className={clsx(
         "group relative flex flex-col gap-2.5 rounded-xl bg-white p-3",
-        isOverlay ? "cursor-grabbing shadow-[0_20px_48px_-18px_rgba(15,30,75,0.6)]" : "cursor-grab shadow-[0_2px_8px_-4px_rgba(14,30,70,0.2)] hover:shadow-[0_8px_24px_-10px_rgba(14,30,70,0.3)]",
+        isOverlay ? "cursor-grabbing opacity-80 shadow-[0_20px_48px_-18px_rgba(15,30,75,0.6)]" : "cursor-grab shadow-[0_2px_8px_-4px_rgba(14,30,70,0.2)] hover:shadow-[0_8px_24px_-10px_rgba(14,30,70,0.3)]",
         "transition-[box-shadow,opacity] duration-150",
         isDragging && !isOverlay ? "opacity-0" : "opacity-100",
       )}

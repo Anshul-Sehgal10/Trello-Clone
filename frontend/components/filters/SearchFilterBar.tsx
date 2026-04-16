@@ -42,7 +42,7 @@ export function SearchFilterBar({
     <section
       className="relative rounded-2xl p-3.5"
       style={{
-        background: "rgba(0,0,0,0.25)",
+        background: "rgba(31, 41, 67, 0.95)", // Matches #1f2943
         border: "1px solid rgba(255,255,255,0.12)",
         boxShadow: "0 12px 40px -24px rgba(0,0,0,0.5)",
         backdropFilter: "blur(14px)",
@@ -136,8 +136,9 @@ export function SearchFilterBar({
         {/* Due from */}
         <div className="relative">
           <CalendarDays className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+          <div className="pointer-events-none absolute left-9 top-1/2 -translate-y-1/2 text-[0.65rem] font-bold uppercase tracking-wider text-[#6484bc]">From</div>
           <input
-            className={`${fieldClass} pl-9`}
+            className={`${fieldClass} pl-20`}
             style={{ ...fieldStyle, colorScheme: "dark" }}
             onFocus={fieldFocusHandler}
             onBlur={fieldBlurHandler}
@@ -151,8 +152,9 @@ export function SearchFilterBar({
         {/* Due to */}
         <div className="relative">
           <CalendarRange className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-white/50" />
+          <div className="pointer-events-none absolute left-9 top-1/2 -translate-y-1/2 text-[0.65rem] font-bold uppercase tracking-wider text-[#6484bc]">To</div>
           <input
-            className={`${fieldClass} pl-9`}
+            className={`${fieldClass} pl-[3.7rem]`}
             style={{ ...fieldStyle, colorScheme: "dark" }}
             onFocus={fieldFocusHandler}
             onBlur={fieldBlurHandler}

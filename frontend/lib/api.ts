@@ -5,6 +5,7 @@ import {
   CardMutation,
   Id,
   Label,
+  Member,
   SearchFilters,
 } from "@/lib/types";
 
@@ -75,6 +76,12 @@ export const api = {
     const board = await request<BoardDetail>(`/boards/${boardId}`);
     return normalizeBoard(board);
   },
+
+  createBoardMember: (boardId: Id, input: { name: string; email: string; avatar: string }) =>
+    request<Member>(`/boards/${boardId}/members`, {
+      method: "POST",
+      body: JSON.stringify(input),
+    }),
 
   createBoard: (input: { title: string; description?: string }) =>
     request<BoardSummary>("/boards", {

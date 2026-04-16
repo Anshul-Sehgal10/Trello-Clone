@@ -119,7 +119,7 @@ export function ListColumn({
       ref={isOverlay ? undefined : setNodeRef}
       className={clsx(
         "relative flex max-h-[calc(100vh-210px)] w-[min(310px,calc(100vw-64px))] min-w-[min(310px,calc(100vw-64px))] flex-col gap-2 rounded-2xl max-[640px]:w-[88vw] max-[640px]:min-w-[88vw]",
-        isOverlay ? "cursor-grabbing" : ""
+        isOverlay ? "cursor-grabbing opacity-90 shadow-[0_30px_70px_-15px_rgba(0,0,0,0.4)]" : "cursor-grab"
       )}
       style={{
         ...(isOverlay ? {} : style),

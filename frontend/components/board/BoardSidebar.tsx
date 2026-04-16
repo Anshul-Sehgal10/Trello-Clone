@@ -10,7 +10,7 @@ import {
   useSensor,
   useSensors,
 } from "@dnd-kit/core";
-import { snapCenterToCursor } from "@dnd-kit/modifiers";
+import { restrictToVerticalAxis } from "@dnd-kit/modifiers";
 import { SortableContext, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
@@ -217,101 +217,48 @@ export function BoardSidebar({
       )}
     >
       <div className="flex items-center justify-between px-1">
-        {collapsed ? null : (
-          <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.08em] text-[#d7e5ff]">Boards</h2>
-        )}
+        <h2 className="m-0 text-sm font-semibold uppercase tracking-[0.08em] text-[#d7e5ff]">TaskFlow</h2>
         <div className="flex items-center gap-2">
-          {collapsed ? null : (
-            <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-[#d9e7ff]">
-              {boards.length}
-            </span>
-          )}
-          {collapsed ? (
-            <div ref={compactSearchRef} className="relative">
-              <button
-                type="button"
-                onClick={() => setIsCompactSearchOpen((value) => !value)}
-                className="grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-white/10 text-white/90 transition hover:bg-white/20"
-                aria-label="Search boards"
-                title="Search boards"
-              >
-                <Search className="h-4 w-4" />
-              </button>
-
-              <div
-                className={`absolute left-full top-0 z-30 ml-2 w-56 rounded-xl border border-white/20 bg-[#1f2943]/95 p-2 shadow-lg backdrop-blur transition ${
-                  isCompactSearchOpen ? "opacity-100" : "pointer-events-none opacity-0"
-                }`}
-              >
-                <div className="relative">
-                  <Search className="pointer-events-none absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9fbbeb]" />
-                  <input
-                    className="w-full rounded-lg border border-white/15 bg-white/10 py-1.5 pl-8 pr-7 text-xs text-white outline-none placeholder:text-white/60 focus:border-[#5fa8ff]"
-                    placeholder="Search boards"
-                    value={boardSearch}
-                    onChange={(event) => setBoardSearch(event.target.value)}
-                    autoFocus
-                  />
-                  {boardSearch ? (
-                    <button
-                      type="button"
-                      onClick={() => setBoardSearch("")}
-                      className="absolute right-1.5 top-1/2 -translate-y-1/2 rounded p-1 text-white/70 hover:text-white"
-                      aria-label="Clear search"
-                    >
-                      <X className="h-3 w-3" />
-                    </button>
-                  ) : null}
-                </div>
-              </div>
-            </div>
-          ) : null}
-          <button
-            type="button"
-            onClick={onToggleCollapsed}
-            className="grid h-8 w-8 place-items-center rounded-lg border border-white/15 bg-white/10 text-white/90 transition hover:bg-white/20"
-            aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-            title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-          >
-            {collapsed ? <ChevronsRight className="h-4 w-4" /> : <ChevronsLeft className="h-4 w-4" />}
-          </button>
+          <span className="rounded-full border border-white/15 bg-white/10 px-2 py-0.5 text-xs text-[#d9e7ff]">
+            {boards.length}
+          </span>
         </div>
       </div>
 
-      {collapsed ? (
+      <div className="relative px-1">
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-[#6484bc]" />
+        <input
+          className={inputBase}
+          style={{ paddingLeft: "2.5rem" }}
+          placeholder="Search boards"
+          value={boardSearch}
+          onChange={(event) => setBoardSearch(event.target.value)}
+        />
+        {boardSearch.length > 0 && (
+          <button
+            className="absolute right-3 top-1/2 -translate-y-1/2 text-[#6484bc] hover:text-white"
+            onClick={() => setBoardSearch("")}
+            type="button"
+            title="Clear search"
+          >
+            <X className="h-4 w-4" />
+          </button>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
         <button
           type="button"
           onClick={() => setIsCreateModalOpen(true)}
-          className="grid h-10 w-10 place-items-center rounded-xl border border-white/20 bg-gradient-to-r from-[#4f9cf9] to-[#7b8dff] text-white transition hover:brightness-110"
-          aria-label="New board"
-          title="New board"
+          className={buttonBase}
+          disabled={loading}
         >
-          <Plus className="h-4 w-4" />
+          <span className="inline-flex items-center justify-center gap-2">
+            <Plus className="h-4 w-4" />
+            New board
+          </span>
         </button>
-      ) : (
-        <div className="flex flex-col gap-2">
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-white/60" />
-            <input
-              className={`${inputBase} pl-8`}
-              placeholder="Search boards"
-              value={boardSearch}
-              onChange={(event) => setBoardSearch(event.target.value)}
-            />
-          </div>
-          <button
-            type="button"
-            onClick={() => setIsCreateModalOpen(true)}
-            className={buttonBase}
-            disabled={loading}
-          >
-            <span className="inline-flex items-center justify-center gap-2">
-              <Plus className="h-4 w-4" />
-              New board
-            </span>
-          </button>
-        </div>
-      )}
+      </div>
 
       <div className="hide-scrollbar min-h-0 overflow-y-auto pr-1">
         <DndContext
@@ -347,7 +294,7 @@ export function BoardSidebar({
             </div>
           </SortableContext>
 
-          <DragOverlay dropAnimation={null} modifiers={[snapCenterToCursor]}>
+          <DragOverlay dropAnimation={null}>
             {draggedBoard ? (
               <div className="w-[min(320px,calc(100vw-64px))] rounded-2xl border border-[#85b6ff]/45 bg-[#2b3b5f]/95 p-3 text-white shadow-[0_20px_50px_-24px_rgba(11,23,51,0.85)] backdrop-blur">
                 <div className="flex items-center gap-2">
@@ -371,12 +318,12 @@ export function BoardSidebar({
       >
         <form className="space-y-3" onSubmit={handleSubmit}>
           <div className="space-y-1.5">
-            <label htmlFor="new-board-title" className="text-sm font-medium text-slate-700">
+            <label htmlFor="new-board-title" className="text-sm font-medium text-slate-300">
               Title
             </label>
             <input
               id="new-board-title"
-              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-[#5fa8ff] focus:ring-2 focus:ring-[#5fa8ff]/25"
+              className={inputBase}
               placeholder="Board title"
               value={newBoardTitle}
               onChange={(event) => setNewBoardTitle(event.target.value)}
@@ -386,12 +333,12 @@ export function BoardSidebar({
           </div>
 
           <div className="space-y-1.5">
-            <label htmlFor="new-board-description" className="text-sm font-medium text-slate-700">
+            <label htmlFor="new-board-description" className="text-sm font-medium text-slate-300">
               Description
             </label>
             <textarea
               id="new-board-description"
-              className="w-full min-h-20 resize-none rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-800 outline-none transition focus:border-[#5fa8ff] focus:ring-2 focus:ring-[#5fa8ff]/25"
+              className={`${inputBase} min-h-20 resize-none`}
               placeholder="Description (optional)"
               value={newBoardDescription}
               onChange={(event) => setNewBoardDescription(event.target.value)}
@@ -405,7 +352,7 @@ export function BoardSidebar({
               type="button"
               onClick={() => setIsCreateModalOpen(false)}
               disabled={isCreating}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>
@@ -429,16 +376,16 @@ export function BoardSidebar({
         title="Delete board?"
       >
         <div className="space-y-4">
-          <p className="text-sm text-slate-700">
+          <p className="text-sm text-slate-300">
             This will permanently delete
-            <span className="font-semibold text-slate-900"> {pendingDeleteBoard?.title}</span>.
+            <span className="font-semibold text-white"> {pendingDeleteBoard?.title}</span>.
             This action cannot be undone.
           </p>
           <div className="flex justify-end gap-2">
             <button
               onClick={() => setPendingDeleteBoard(null)}
               disabled={isDeletingBoard}
-              className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 transition hover:bg-slate-100 disabled:cursor-not-allowed disabled:opacity-60"
+              className="rounded-lg border border-white/20 px-3 py-1.5 text-sm text-slate-300 transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-60"
             >
               Cancel
             </button>

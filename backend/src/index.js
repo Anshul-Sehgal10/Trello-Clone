@@ -58,6 +58,13 @@ app.get('/api/boards/:boardId', async (req, res) => {
           checklist.items = items;
         }
         card.checklists = checklists;
+
+        // Get comments
+        const comments = await dbQuery(
+          'SELECT c.*, m.name, m.avatar FROM comments c JOIN members m ON c.memberId = m.id WHERE c.cardId = ? ORDER BY c.createdAt DESC',
+          [card.id]
+        );
+        card.comments = comments;
       }
       
       list.cards = cards;
@@ -228,7 +235,7 @@ app.get('/api/cards/:cardId', async (req, res) => {
     card.checklists = checklists;
 
     const comments = await dbQuery(
-      'SELECT c.*, m.name, m.avatar FROM comments c JOIN members m ON c.memberId = m.id WHERE c.cardId = ? ORDER BY c.createdAt',
+      'SELECT c.*, m.name, m.avatar FROM comments c JOIN members m ON c.memberId = m.id WHERE c.cardId = ? ORDER BY c.createdAt DESC',
       [cardId]
     );
     card.comments = comments;
@@ -279,7 +286,7 @@ app.post('/api/cards/:cardId/assignees', async (req, res) => {
     const { cardId } = req.params;
     const { memberId } = req.body;
     
-    await dbRun('INSERT INTO card_assignees ("cardId", "memberId") VALUES (?, ?) ON CONFLICT DO NOTHING',
+    await dbRun('INSERT INTO card_assignees (cardid, memberid) VALUES (?, ?) ON CONFLICT DO NOTHING',
       [cardId, memberId]);
     
     const assignees = await dbQuery(
@@ -297,7 +304,7 @@ app.delete('/api/cards/:cardId/assignees/:memberId', async (req, res) => {
   try {
     const { cardId, memberId } = req.params;
     
-    await dbRun('DELETE FROM card_assignees WHERE cardId = ? AND memberId = ?',
+    await dbRun('DELETE FROM card_assignees WHERE cardid = ? AND memberid = ?',
       [cardId, memberId]);
     
     res.json({ message: 'Assignee removed successfully' });
@@ -341,7 +348,7 @@ app.post('/api/cards/:cardId/labels', async (req, res) => {
     const { cardId } = req.params;
     const { labelId } = req.body;
     
-    await dbRun('INSERT INTO card_labels ("cardId", "labelId") VALUES (?, ?) ON CONFLICT DO NOTHING',
+    await dbRun('INSERT INTO card_labels (cardid, labelid) VALUES (?, ?) ON CONFLICT DO NOTHING',
       [cardId, labelId]);
     
     const labels = await dbQuery(
@@ -359,7 +366,7 @@ app.delete('/api/cards/:cardId/labels/:labelId', async (req, res) => {
   try {
     const { cardId, labelId } = req.params;
     
-    await dbRun('DELETE FROM card_labels WHERE cardId = ? AND labelId = ?',
+    await dbRun('DELETE FROM card_labels WHERE cardid = ? AND labelid = ?',
       [cardId, labelId]);
     
     res.json({ message: 'Label removed successfully' });
@@ -530,6 +537,43 @@ app.get('/api/boards/:boardId/members', async (req, res) => {
 
 // ==================== SEARCH & FILTER ====================
 
+// Create board member
+app.post('/api/boards/:boardId/members', async (req, res) => {
+  try {
+    const { boardId } = req.params;
+    const { name, email, avatar } = req.body;
+    
+    if (!name || !email) {
+      return res.status(400).json({ error: 'Name and email are required' });
+    }
+
+    let member = await dbGet('SELECT * FROM members WHERE email = ?', [email]);
+    let memberId;
+    
+    if (member) {
+      memberId = member.id;
+    } else {
+      memberId = 'member-' + uuidv4();
+      await dbRun(
+        'INSERT INTO members (id, name, email, avatar) VALUES (?, ?, ?, ?)',
+        [memberId, name, email, avatar]
+      );
+    }
+
+    await dbRun(
+      'INSERT INTO board_members (boardid, memberid, role) VALUES (?, ?, ?) ON CONFLICT (boardid, memberid) DO NOTHING',
+      [boardId, memberId, 'member']
+    );
+
+    const finalMember = await dbGet('SELECT * FROM members WHERE id = ?', [memberId]);
+    res.status(201).json(finalMember);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ==================== SEARCH & FILTER ====================
+
 // Search cards
 app.get('/api/boards/:boardId/search', async (req, res) => {
   try {
@@ -582,5 +626,5 @@ app.get('/api/health', (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`Server running on http://localhost:${PORT}`);
+  console.log("Server is running");
 });

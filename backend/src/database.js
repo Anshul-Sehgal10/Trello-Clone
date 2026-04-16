@@ -280,7 +280,7 @@ async function seedDatabase(client) {
     // Add members to board
     for (const member of members) {
       await client.query(
-        'INSERT INTO board_members ("boardId", "memberId", role) VALUES ($1, $2, $3)',
+        'INSERT INTO board_members (boardid, memberid, role) VALUES ($1, $2, $3)',
         [boardId, member.id, 'member']
       );
     }
@@ -295,7 +295,7 @@ async function seedDatabase(client) {
 
     for (const label of labels) {
      await client.query(
-       'INSERT INTO labels (id, "boardId", title, color) VALUES ($1, $2, $3, $4)',
+       'INSERT INTO labels (id, boardid, title, color) VALUES ($1, $2, $3, $4)',
        [label.id, boardId, label.title, label.color]
      );
     }
@@ -311,7 +311,7 @@ async function seedDatabase(client) {
 
     for (const list of lists) {
       await client.query(
-        'INSERT INTO lists (id, "boardId", title, position) VALUES ($1, $2, $3, $4)',
+        'INSERT INTO lists (id, boardid, title, position) VALUES ($1, $2, $3, $4)',
         [list.id, boardId, list.title, list.position]
       );
     }
@@ -335,7 +335,7 @@ async function seedDatabase(client) {
 
     for (const card of cards) {
       await client.query(
-        'INSERT INTO cards (id, "listId", title, description, position, "dueDate", "dueComplete") VALUES ($1, $2, $3, $4, $5, $6, $7)',
+        'INSERT INTO cards (id, listid, title, description, position, duedate, duecomplete) VALUES ($1, $2, $3, $4, $5, $6, $7)',
         [card.id, card.listId, card.title, card.description, card.position, card.dueDate, card.dueComplete]
       );
     }
@@ -350,7 +350,7 @@ async function seedDatabase(client) {
     ];
     for (const a of assignees) {
       await client.query(
-        'INSERT INTO card_assignees ("cardId", "memberId") VALUES ($1, $2)',
+        'INSERT INTO card_assignees (cardid, memberid) VALUES ($1, $2)',
         [a.cardId, a.memberId]
       );
     }
@@ -364,7 +364,7 @@ async function seedDatabase(client) {
     ];
     for (const cl of cardLabels) {
       await client.query(
-        'INSERT INTO card_labels ("cardId", "labelId") VALUES ($1, $2)',
+        'INSERT INTO card_labels (cardid, labelid) VALUES ($1, $2)',
         [cl.cardId, cl.labelId]
       );
     }
@@ -372,7 +372,7 @@ async function seedDatabase(client) {
     // Seed Checklists
     const checklistId = 'chk-1';
     await client.query(
-      'INSERT INTO checklists (id, "cardId", title, position) VALUES ($1, $2, $3, $4)',
+      'INSERT INTO checklists (id, cardid, title, position) VALUES ($1, $2, $3, $4)',
       [checklistId, 'card-5', 'Migration Steps', 0]
     );
 
@@ -383,7 +383,7 @@ async function seedDatabase(client) {
     ];
     for (const item of checklistItems) {
       await client.query(
-        'INSERT INTO checklist_items (id, "checklistId", title, completed, position) VALUES ($1, $2, $3, $4, $5)',
+        'INSERT INTO checklist_items (id, checklistid, title, completed, position) VALUES ($1, $2, $3, $4, $5)',
         [item.id, item.checklistId, item.title, item.completed, item.position]
       );
     }

@@ -60,7 +60,6 @@ export default function Home() {
   const [selectedCardId, setSelectedCardId] = useState<Id | null>(null);
   const [selectedCardDetail, setSelectedCardDetail] = useState<Card | null>(null);
   const [toasts, setToasts] = useState<ToastItem[]>([]);
-  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
 
   const [loadingBoards, setLoadingBoards] = useState(true);
   const [loadingBoard, setLoadingBoard] = useState(false);
@@ -200,7 +199,16 @@ export default function Home() {
 
   const refreshCurrentBoard = async () => {
     if (!selectedBoardId) return;
-    await loadBoardData(selectedBoardId);
+    try {
+      const [boardDetail, boardLabels] = await Promise.all([
+        api.getBoard(selectedBoardId),
+        api.getBoardLabels(selectedBoardId),
+      ]);
+      setBoard(boardDetail);
+      setLabels(boardLabels);
+    } catch {
+      // Ignore background refresh errors
+    }
   };
 
   const handleCreateBoard = async (title: string, description: string) => {
@@ -389,6 +397,32 @@ export default function Home() {
     setSelectedCardDetail(cardDetail);
   };
 
+  const handleCreateLabel = async (title: string, color: string) => {
+    if (!selectedBoardId) return;
+    try {
+      const newLabel = await api.createLabel({ boardId: selectedBoardId, title, color });
+      setLabels((prev) => [...prev, newLabel]);
+      pushToast("success", "Label created");
+    } catch {
+      pushToast("error", "Failed to create label");
+    }
+  };
+
+  const handleCreateMember = async (name: string, email: string) => {
+    if (!selectedBoardId || !board) return;
+    try {
+      const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name.replace(/\s+/g, ''))}`;
+      const newMember = await api.createBoardMember(selectedBoardId, { name, email, avatar });
+      setBoard({
+        ...board,
+        members: [...board.members, newMember],
+      });
+      pushToast("success", "Member created");
+    } catch {
+      pushToast("error", "Failed to create member");
+    }
+  };
+
   const handleUpdateBoardStyle = async (input: { color: string | null; background: string | null }) => {
     if (!board) return;
     const optimistic = {
@@ -525,11 +559,16 @@ export default function Home() {
     }
 
     if (activeType === "card") {
-      const inferredOverType =
-        (over.data.current?.type as "list" | "card" | undefined) ??
-        (board.lists.some((list) => list.id === overId) ? "list" : "card");
+      const overType = over.data.current?.type as "list" | "card" | undefined;
+      let actualOverId = overId;
+      if (typeof overId === "string" && overId.startsWith("droppable-list-")) {
+        actualOverId = overId.replace("droppable-list-", "");
+      }
 
-      const moved = moveCard(board, activeId, overId, inferredOverType);
+      const inferredOverType =
+        overType ?? (board.lists.some((list) => list.id === actualOverId) ? "list" : "card");
+
+      const moved = moveCard(board, activeId, actualOverId, inferredOverType);
       if (!moved) return;
 
       setBoard(moved.nextBoard);
@@ -559,13 +598,7 @@ export default function Home() {
 
   return (
     <div className="flex h-dvh max-h-dvh flex-col gap-3.5 overflow-hidden p-2.5 sm:p-3.5 lg:flex-row lg:items-stretch">
-      <div
-        className={`relative min-w-0 shrink-0 self-stretch overflow-hidden origin-left transition-[width,flex-basis,max-width] duration-300 ease-out will-change-[width] ${
-          isSidebarCollapsed
-            ? "w-full lg:basis-[84px] lg:w-[84px] lg:max-w-[84px]"
-            : "w-full lg:basis-[300px] lg:w-[300px] lg:max-w-[300px]"
-        }`}
-      >
+      <div className="relative w-full min-w-0 shrink-0 self-stretch overflow-hidden lg:basis-[300px] lg:w-[300px] lg:max-w-[300px]">
         <BoardSidebar
           boards={boards}
           selectedBoardId={selectedBoardId}
@@ -573,8 +606,8 @@ export default function Home() {
           onCreateBoard={handleCreateBoard}
           onDeleteBoard={handleDeleteBoard}
           onReorderBoards={handleReorderBoards}
-          collapsed={isSidebarCollapsed}
-          onToggleCollapsed={() => setIsSidebarCollapsed((value) => !value)}
+          collapsed={false}
+          onToggleCollapsed={() => {}}
           loading={loadingBoards}
         />
       </div>
@@ -627,7 +660,9 @@ export default function Home() {
               onSave={handleSaveCard}
               onDelete={handleDeleteCard}
               onToggleAssignee={handleToggleAssignee}
+              onCreateMember={handleCreateMember}
               onToggleLabel={handleToggleLabel}
+              onCreateLabel={handleCreateLabel}
               onCreateChecklist={handleCreateChecklist}
               onAddChecklistItem={handleAddChecklistItem}
               onToggleChecklistItem={handleToggleChecklistItem}

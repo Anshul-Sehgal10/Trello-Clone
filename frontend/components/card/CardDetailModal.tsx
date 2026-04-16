@@ -14,7 +14,9 @@ interface CardDetailModalProps {
   onSave: (input: { title: string; description: string; dueDate: string | null; archived: boolean }) => Promise<void>;
   onDelete: () => Promise<void>;
   onToggleAssignee: (memberId: string, assigned: boolean) => Promise<void>;
+  onCreateMember: (name: string, email: string) => Promise<void>;
   onToggleLabel: (labelId: string, attached: boolean) => Promise<void>;
+  onCreateLabel: (title: string, color: string) => Promise<void>;
   onCreateChecklist: (title: string) => Promise<void>;
   onAddChecklistItem: (checklistId: string, title: string) => Promise<void>;
   onToggleChecklistItem: (
@@ -63,7 +65,9 @@ export function CardDetailModal({
   onSave,
   onDelete,
   onToggleAssignee,
+  onCreateMember,
   onToggleLabel,
+  onCreateLabel,
   onCreateChecklist,
   onAddChecklistItem,
   onToggleChecklistItem,
@@ -78,6 +82,12 @@ export function CardDetailModal({
   const [dueDate, setDueDate] = useState(card?.dueDate ? card.dueDate.slice(0, 10) : "");
   const [archived, setArchived] = useState(card?.archived ?? false);
   const [newChecklist, setNewChecklist] = useState("");
+  const [newMemberName, setNewMemberName] = useState("");
+  const [newMemberEmail, setNewMemberEmail] = useState("");
+  const [isCreatingMember, setIsCreatingMember] = useState(false);
+  const [newLabelTitle, setNewLabelTitle] = useState("");
+  const [newLabelColor, setNewLabelColor] = useState("#4f9cf9");
+  const [isCreatingLabel, setIsCreatingLabel] = useState(false);
   const [newComment, setNewComment] = useState("");
   const [newItemByChecklist, setNewItemByChecklist] = useState<Record<string, string>>({});
 
@@ -234,6 +244,45 @@ export function CardDetailModal({
               {boardMembers.length === 0 ? (
                 <p className="m-0 text-xs text-[#4a6290]">No members on this board</p>
               ) : null}
+
+              <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2">
+                <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[#6b8abf]">New Member</p>
+                <div className="flex flex-col gap-2">
+                  <input
+                    className={`${inputClass} py-1.5 px-2.5 text-xs`}
+                    style={inputStyle}
+                    placeholder="Name"
+                    value={newMemberName}
+                    onChange={(e) => setNewMemberName(e.target.value)}
+                  />
+                  <div className="flex gap-2">
+                    <input
+                      className={`flex-1 ${inputClass} py-1.5 px-2.5 text-xs`}
+                      style={inputStyle}
+                      placeholder="Email"
+                      value={newMemberEmail}
+                      onChange={(e) => setNewMemberEmail(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      style={subtleButtonStyle}
+                      disabled={isCreatingMember || !newMemberName.trim() || !newMemberEmail.trim()}
+                      onClick={async () => {
+                        setIsCreatingMember(true);
+                        try {
+                          await onCreateMember(newMemberName.trim(), newMemberEmail.trim());
+                          setNewMemberName("");
+                          setNewMemberEmail("");
+                        } finally {
+                          setIsCreatingMember(false);
+                        }
+                      }}
+                    >
+                      {isCreatingMember ? "..." : "Add"}
+                    </button>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
 
@@ -264,6 +313,51 @@ export function CardDetailModal({
               {boardLabels.length === 0 ? (
                 <p className="m-0 text-xs text-[#4a6290]">No labels on this board</p>
               ) : null}
+
+              <div className="mt-2 rounded-lg border border-white/10 bg-white/5 p-2">
+                <p className="mb-2 text-[0.65rem] font-semibold uppercase tracking-wider text-[#6b8abf]">New Label</p>
+                <div className="flex flex-col gap-2">
+                  <div className="flex gap-2">
+                    <input
+                      className={`flex-1 ${inputClass} py-1.5 px-2.5 text-xs`}
+                      style={inputStyle}
+                      placeholder="Label title..."
+                      value={newLabelTitle}
+                      onChange={(e) => setNewLabelTitle(e.target.value)}
+                    />
+                    <button
+                      type="button"
+                      style={subtleButtonStyle}
+                      disabled={isCreatingLabel}
+                      onClick={async () => {
+                        setIsCreatingLabel(true);
+                        try {
+                          await onCreateLabel(newLabelTitle.trim(), newLabelColor);
+                          setNewLabelTitle("");
+                        } finally {
+                          setIsCreatingLabel(false);
+                        }
+                      }}
+                    >
+                      {isCreatingLabel ? "..." : "Add"}
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {["#EF4444", "#F59E0B", "#10B981", "#3B82F6", "#8B5CF6", "#EC4899"].map(c => (
+                      <button
+                        key={c}
+                        type="button"
+                        onClick={() => setNewLabelColor(c)}
+                        className="h-5 w-5 rounded transition"
+                        style={{
+                          backgroundColor: c,
+                          boxShadow: newLabelColor === c ? `0 0 0 2px rgba(255,255,255,0.9)` : `0 0 0 1px ${c}55`
+                        }}
+                      />
+                    ))}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>

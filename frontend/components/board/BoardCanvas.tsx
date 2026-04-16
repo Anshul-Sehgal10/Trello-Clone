@@ -175,17 +175,12 @@ export function BoardCanvas({
       <header
         className="relative z-30 mx-4 mt-4 rounded-2xl px-5 py-4 text-[#f0f6ff]"
         style={{
-          background: "linear-gradient(120deg, rgba(10,25,65,0.92) 0%, rgba(20,55,130,0.85) 50%, rgba(80,50,200,0.75) 100%)",
-          border: "1px solid rgba(255,255,255,0.15)",
-          boxShadow: "0 24px 55px -28px rgba(6,14,42,0.9)",
-          backdropFilter: "blur(16px)",
+          background: "rgba(31, 41, 67, 0.95)",
+          border: "1px solid rgba(255,255,255,0.12)",
+          boxShadow: "0 12px 40px -24px rgba(0,0,0,0.5)",
+          backdropFilter: "blur(14px)",
         }}
       >
-        {/* Subtle radial glow */}
-        <div
-          className="pointer-events-none absolute right-0 top-0 h-40 w-40 rounded-full opacity-30"
-          style={{ background: "radial-gradient(circle, rgba(124,58,237,0.6), transparent 70%)" }}
-        />
 
         <div className="flex flex-wrap items-start justify-between gap-4 pr-2">
           {/* Title & description */}
